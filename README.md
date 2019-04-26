@@ -32,6 +32,17 @@ GOOS=linux GOARCH=amd64 go build -o main main.go
 zip main.zip main
 ```
 
+**(docker)Golang Alpine images** doesn't build statically linked binary:
+ELF 64-bit LSB executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib/ld-musl-x86_64.so.1, stripped
+
+The interpreter doesn't exist in Lambda environment so that's will throws "no such file or directory error".
+
+To solve that use
+``` shell
+GOOS=linux go build -v -ldflags '-d -s -w' -a -tags netgo -installsuffix netgo -o bin/service service/main.go
+```
+
+
 ## For developers on Windows
 
 Windows developers may have trouble producing a zip file that marks the binary as executable on Linux. To create a .zip that will work on AWS Lambda, the `build-lambda-zip` tool may be helpful.
