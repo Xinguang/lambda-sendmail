@@ -7,6 +7,7 @@ import (
 	"net/mail"
 	"net/smtp"
 	"os"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -17,30 +18,38 @@ var (
 	SENDER_PASSWORD = os.Getenv("SENDER_PASSWORD")
 	SENDER_HOST     = os.Getenv("SENDER_HOST")
 	SENDER_PORT     = os.Getenv("SENDER_PORT") // default 587
-	RECIPIENT       = os.Getenv("RECIPIENT")   // name<mail@server.addr>
+	RECIPIENTS      = os.Getenv("RECIPIENTS")  //  <info@site.com>;recipient <info@other.com>;
 )
 
 // The recipient address
-var recipient = func() *mail.Address {
-	address, err := mail.ParseAddress(RECIPIENT)
-	if err != nil {
-		log.Fatal(err)
+var recipients = func() []*mail.Address {
+	addressList := []*mail.Address{}
+	var mailList = strings.Split(RECIPIENTS, ";")
+	for _, mailString := range mailList {
+		recipient, err := mail.ParseAddress(mailString)
+		if err != nil {
+			continue
+		}
+		addressList = append(addressList, recipient)
 	}
-	return address
+	return addressList
 }()
 
 func Send(msg Message) error {
 	// The servername must include a port, as in "mail.example.com:smtp".
 	servername := fmt.Sprintf("%s:%s", SENDER_HOST, SENDER_PORT)
 	auth := smtp.PlainAuth("", SENDER_USER, SENDER_PASSWORD, SENDER_HOST)
-	recipients := []string{recipient.Address}
-	msg.Add("To", recipient.String())
+	toList := []string{}
+	for _, recipient := range recipients {
+		toList = append(toList, recipient.Address)
+	}
+	msg.Add("To", strings.Join(strings.Split(RECIPIENTS, ";"), ","))
 	from := mail.Address{Name: SENDER_NAME, Address: SENDER_USER}
 	msg.Add("From", from.String())
 
-	log.Infof("recipients %s", recipient.String())
+	log.Infof("recipients %s", recipients)
 
-	return smtp.SendMail(servername, auth, from.Address, recipients, msg.getContent())
+	return smtp.SendMail(servername, auth, from.Address, toList, msg.getContent())
 }
 
 // SendMail connects to the server at addr, switches to TLS if
@@ -97,8 +106,10 @@ var writeCloser = func(client *smtp.Client, from string) io.WriteCloser {
 	if err := client.Mail(from); err != nil {
 		log.Fatal(err)
 	}
-	if err := client.Rcpt(recipient.Address); err != nil {
-		log.Fatal(err)
+	for _, recipient := range recipients {
+		if err := client.Rcpt(recipient.Address); err != nil {
+			log.Fatal(err)
+		}
 	}
 	// Data
 	w, err := client.Data()

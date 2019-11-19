@@ -20,6 +20,7 @@ Contact forms. They are all around us. Almost every website has one.
 * [Create Lambda function](docs/Lambda.md)
 * [Create API gateway endpoint](docs/APIgateway.md)
 * [Integrate Google reCAPTCHA in your website](#website)
+* [Environment variables](#environment)
 
 ## Build Project <a name="build" />
 
@@ -98,4 +99,42 @@ Let’s look at the [sample code](example.html) to understand it better.
 
 ```url
 "https://API_Gateway_id.execute-api.ap-northeast-1.amazonaws.com/v1/sendmail";
+```
+
+## Environment variables <a name="environment" />
+
+| Key  | Value |
+| ------------- | ------------- |
+| SENDMAIL_SUBJECT  | email subject  |
+| SENDMAIL_MAILTYPE  | html or plain  |
+| SENDER_USER  | smtp user name |
+| SENDER_NAME  | the display sender name  |
+| SENDER_PASSWORD  | smtp password  |
+| SENDER_HOST  | smtp host(E.g., example.com)  |
+| SENDER_PORT  | smtp port(E.g., 587)  |
+| RECIPIENTS  | recipients (E.g., recipient <info@site.com>;recipient <info@other.com>;) |
+| SECRET_KEY  | reCaptcha Secret Key |
+
+
+### Dev environment
+
+- https://www.jianshu.com/p/166d272f51b3
+- 
+```sh
+sam init --runtime
+
+sam local invoke SendmailFunction --event test-event.json
+# or
+sam local start-api
+
+curl -i -X POST \
+   -H "content-type:application/json" \
+   -d \
+'{
+  "name":"にほんご",
+  "email":"test@test.com",
+  "message":"にほんご",
+  "token":"tokenxxxxx"
+}' \
+ 'http://127.0.0.1:3000/sendmail'
 ```

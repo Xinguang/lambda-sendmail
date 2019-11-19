@@ -26,12 +26,6 @@ type Response struct {
 }
 
 func verify(token string) bool {
-	// data := url.Values{
-	// 	"secret":   {SECRET},
-	// 	"response": {token},
-	// }
-	// body := strings.NewReader(data.Encode())
-
 	var r http.Request
 	r.ParseForm()
 	r.Form.Add("secret", SECRET)

@@ -1,10 +1,10 @@
 package recaptcha
 
 import (
-	"errors"
 	"net/mail"
 
 	"github.com/Xinguang/lambda-sendmail/sendmail"
+	"github.com/aws/aws-lambda-go/events"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -16,11 +16,15 @@ type Contact struct {
 }
 
 // Handle for verify a user's response to a reCAPTCHA challenge
-func Handle(contact Contact) (string, error) {
+func Handle(contact Contact) (events.APIGatewayProxyResponse, error) {
 	if !verify(contact.Token) {
-		return "", errors.New("timeout-or-duplicate")
+		return events.APIGatewayProxyResponse{
+			Body:       "timeout-or-duplicate",
+			StatusCode: 400,
+		}, nil
 	}
 
+	log.Info(contact)
 	reply := mail.Address{Name: contact.Name, Address: contact.Email}
 	message := sendmail.NewMessage()
 
@@ -32,8 +36,13 @@ func Handle(contact Contact) (string, error) {
 
 	if err != nil {
 		log.Fatal(err)
-		return "", err
+		return events.APIGatewayProxyResponse{
+			Body:       "there is some errors",
+			StatusCode: 400,
+		}, err
 	}
-
-	return "verify", nil
+	return events.APIGatewayProxyResponse{
+		Body:       contact.Message,
+		StatusCode: 200,
+	}, nil
 }
