@@ -26,7 +26,17 @@ Contact forms. They are all around us. Almost every website has one.
 
 Preparing a binary to deploy to AWS Lambda requires that it is compiled for Linux and placed into a .zip file.
 
+
+## Via docker
+
+``` shell
+docker run -it --rm -v $(pwd):/work -w /work lambci/lambda:build-go1.x sam build
+cd .aws-sam/build/SendmailFunction
+zip main.zip main
+```
+
 ## For developers on Linux and macOS
+
 ``` shell
 # Remember to build your handler executable for Linux!
 GOOS=linux GOARCH=amd64 go build -o main main.go
@@ -105,25 +115,25 @@ Let’s look at the [sample code](example.html) to understand it better.
 
 | Key  | Value |
 | ------------- | ------------- |
-| SENDMAIL_SUBJECT  | email subject  |
-| SENDMAIL_MAILTYPE  | html or plain  |
-| SENDER_USER  | smtp user name |
-| SENDER_NAME  | the display sender name  |
-| SENDER_PASSWORD  | smtp password  |
-| SENDER_HOST  | smtp host(E.g., example.com)  |
-| SENDER_PORT  | smtp port(E.g., 587)  |
-| RECIPIENTS  | recipients (E.g., recipient <info@site.com>;recipient <info@other.com>;) |
-| SECRET_KEY  | reCaptcha Secret Key |
-
+| ReCAPTCHA_SECRET  | reCaptcha Secret Key |
+| SES_REGION  | AWS Region (E.g.,'us-west-1') |
+| MAIL_SUBJECT  | email subject  |
+| IS_HTML  | true or false  |
+| MAIL_FROM  | from(E.g., recipient <info@site.com> or info@site.com)   |
+| TO_ADDRESSES  | recipients (E.g., recipient <info@site.com>,recipient <info@other.com>) |
+| CC_ADDRESSES  | recipients (E.g., recipient <info@site.com>,recipient <info@other.com>) |
+| BCC_ADDRESSES  | recipients (E.g., recipient <info@site.com>,recipient <info@other.com>) |
+| SMTP_USER  | smtp user name |
+| SMTP_PASSWORD  | smtp password  |
+| SMTP_HOST  | smtp host(E.g., example.com)  |
+| SMTP_PORT  | smtp port(E.g., 587)  |
 
 ### Dev environment
 
-- https://www.jianshu.com/p/166d272f51b3
-- 
 ```sh
 sam init --runtime
 
-sam local invoke SendmailFunction --event test-event.json
+sam local invoke SendmailFunction --event test-event.json --env-vars .env
 # or
 sam local start-api
 

@@ -1,4 +1,4 @@
-package recaptcha
+package main
 
 import (
 	"net/mail"
@@ -6,6 +6,7 @@ import (
 	"github.com/Xinguang/lambda-sendmail/sendmail"
 	"github.com/aws/aws-lambda-go/events"
 	log "github.com/sirupsen/logrus"
+	"github.com/xinguang/go-recaptcha"
 )
 
 type Contact struct {
@@ -15,27 +16,32 @@ type Contact struct {
 	Token   string `json:"token"`
 }
 
-// Handle for verify a user's response to a reCAPTCHA challenge
-func Handle(contact Contact) (events.APIGatewayProxyResponse, error) {
-	if !verify(contact.Token) {
+var (
+	captcha *recaptcha.ReCAPTCHA
+)
+func init() {
+	_captcha, err := recaptcha.New()
+	if err != nil {
+		log.Fatal("ReCAPTCHA:", err)
+	}
+	captcha = _captcha
+}
+
+// handle for verify a user's response to a reCAPTCHA challenge
+func handle(contact Contact) (events.APIGatewayProxyResponse, error) {
+	log.Debugf("Contact: %s", contact)
+	err := captcha.Verify(contact.Token)
+	if err != nil {
 		return events.APIGatewayProxyResponse{
-			Body:       "timeout-or-duplicate",
+			Body:       err.Error(),
 			StatusCode: 400,
 		}, nil
 	}
 
-	log.Info(contact)
 	reply := mail.Address{Name: contact.Name, Address: contact.Email}
-	message := sendmail.NewMessage()
-
-	message.Add("Reply-To", reply.String())
-	message.SetBody(contact.Message)
-
-	log.Info("send email")
-	err := sendmail.Send(*message)
+	_, err = sendmail.Send(reply, contact.Message)
 
 	if err != nil {
-		log.Fatal(err)
 		return events.APIGatewayProxyResponse{
 			Body:       "there is some errors",
 			StatusCode: 400,

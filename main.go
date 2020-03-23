@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/Xinguang/lambda-sendmail/recaptcha"
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
@@ -14,5 +13,5 @@ import (
 // env GOOS=linux go build -v -ldflags '-d -s -w' -a -tags netgo -installsuffix netgo -o main main.go as a build command.
 func main() {
 	// Make the handler available for Remote Procedure Call by AWS Lambda
-	lambda.Start(recaptcha.Handle)
+	lambda.Start(handle)
 }

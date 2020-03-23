@@ -13,3 +13,7 @@
 main
 main.zip
 *.bak
+.aws
+.aws-sam
+*.local
+*/bak/*

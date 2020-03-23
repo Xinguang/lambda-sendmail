@@ -26,25 +26,16 @@ Resources:
             Method: POST
       Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
         Variables:
-          RECIPIENTS: <info@site>;recipient <info@ithersite.com>;
-          SENDMAIL_SUBJECT: testMail
-          SENDMAIL_MAILTYPE: html
-          SENDER_NAME: sender
-          SENDER_USER: no-reply@sender.com
-          SENDER_PASSWORD: password
-          SENDER_HOST: sender.com
-          SENDER_PORT: 587
+          ReCAPTCHA_SECRET: 'reCaptcha Secret Key'
+          SES_REGION: 'us-west-1'
+          MAIL_SUBJECT: 'Test email'
+          IS_HTML: true
+          MAIL_FROM: 'info@example.com'
+          CC_ADDRESSES: '<ccAddresses@example.com>, Bob <bob@example.com>'
+          BCC_ADDRESSES: '<bccAddresses@example.com>, Bob <bob@example.com>'
+          TO_ADDRESSES: '<toAddresses@example.com>, Bob <bob@example.com>'
+          SMTP_USER: 'no-reply@e-business.co.jp'
+          SMTP_PASSWORD: 'password'
+          SMTP_HOST: 'sender.com'
+          SMTP_PORT: '587'
   
-Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  HelloWorldAPI:
-    Description: "API Gateway endpoint URL for Prod environment for First Function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  HelloWorldFunction:
-    Description: "First Lambda Function ARN"
-    Value: !GetAtt HelloWorldFunction.Arn
-  HelloWorldFunctionIamRole:
-    Description: "Implicit IAM Role created for Hello World function"
-    Value: !GetAtt HelloWorldFunctionRole.Arn

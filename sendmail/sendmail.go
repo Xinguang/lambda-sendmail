@@ -1,120 +1,71 @@
 package sendmail
 
 import (
-	"crypto/tls"
-	"fmt"
-	"io"
-	"net/mail"
-	"net/smtp"
-	"os"
-	"strings"
-
 	log "github.com/sirupsen/logrus"
+	"net/mail"
 )
+
+type SendMail struct {
+	env ENV
+	from    *mail.Address
+	ccList  []*mail.Address
+	bccList []*mail.Address
+	toList  []*mail.Address
+}
 
 var (
-	SENDER_NAME     = os.Getenv("SENDER_NAME")
-	SENDER_USER     = os.Getenv("SENDER_USER")
-	SENDER_PASSWORD = os.Getenv("SENDER_PASSWORD")
-	SENDER_HOST     = os.Getenv("SENDER_HOST")
-	SENDER_PORT     = os.Getenv("SENDER_PORT") // default 587
-	RECIPIENTS      = os.Getenv("RECIPIENTS")  //  <info@site.com>;recipient <info@other.com>;
+	sendmail  = &SendMail{}
 )
 
-// The recipient address
-var recipients = func() []*mail.Address {
-	addressList := []*mail.Address{}
-	var mailList = strings.Split(RECIPIENTS, ";")
-	for _, mailString := range mailList {
-		recipient, err := mail.ParseAddress(mailString)
-		if err != nil {
-			continue
-		}
-		addressList = append(addressList, recipient)
+func init() {
+	sendmail.env = envHolder
+	var err error
+	sendmail.from, err = mail.ParseAddress(envHolder.MailFrom)
+	if err != nil {
+		log.Fatal("MAIL_FROM:", err)
 	}
-	return addressList
-}()
-
-func Send(msg Message) error {
-	// The servername must include a port, as in "mail.example.com:smtp".
-	servername := fmt.Sprintf("%s:%s", SENDER_HOST, SENDER_PORT)
-	auth := smtp.PlainAuth("", SENDER_USER, SENDER_PASSWORD, SENDER_HOST)
-	toList := []string{}
-	for _, recipient := range recipients {
-		toList = append(toList, recipient.Address)
+	sendmail.toList, err = parseAddressList(envHolder.ToAddresses)
+	if err != nil {
+		log.Fatalf("TO_ADDRESSES: %s error: %s", envHolder.ToAddresses, err)
 	}
-	msg.Add("To", strings.Join(strings.Split(RECIPIENTS, ";"), ","))
-	from := mail.Address{Name: SENDER_NAME, Address: SENDER_USER}
-	msg.Add("From", from.String())
-
-	log.Infof("recipients %s", recipients)
-
-	return smtp.SendMail(servername, auth, from.Address, toList, msg.getContent())
+	sendmail.ccList, err = parseAddressList(envHolder.CcAddresses)
+	if err != nil {
+		log.Fatal("CC_ADDRESSES:", err)
+	}
+	sendmail.bccList, err = parseAddressList(envHolder.BccAddresses)
+	if err != nil {
+		log.Fatal("BCC_ADDRESSES:", err)
+	}
 }
 
-// SendMail connects to the server at addr, switches to TLS if
-// possible, authenticates with the optional mechanism a if possible,
-// and then sends an email from address from, to addresses to, with
-// message msg.
-//
-// The addresses in the to parameter are the SMTP RCPT addresses.
-func SendMail(from string, msg Message) error {
-	client := dial()
-	defer client.Close()
-
-	w := writeCloser(client, from)
-	_, err := w.Write(msg.getContent())
-	if err != nil {
-		return err
+func parseAddressList(list string) ([]*mail.Address, error) {
+	if len(list) == 0 {
+		return nil, nil
 	}
-	err = w.Close()
-	if err != nil {
-		return err
-	}
-	return client.Quit()
+	return mail.ParseAddressList(list)
 }
 
-func dial() *smtp.Client {
-	// The servername must include a port, as in "mail.example.com:smtp".
-	servername := fmt.Sprintf("%s:%s", SENDER_HOST, SENDER_PORT)
-	// TLS config
-	tlsconfig := &tls.Config{
-		InsecureSkipVerify: true,
-		ServerName:         SENDER_HOST,
-	}
-	// Here is the key, you need to call tls.Dial instead of smtp.Dial
-	// for smtp servers running on 465 that require an ssl connection
-	// from the very beginning (no starttls)
-	conn, err := tls.Dial("tcp", servername, tlsconfig)
-	if err != nil {
-		log.Fatal(err)
-	}
-	client, err := smtp.NewClient(conn, SENDER_HOST)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return client
-}
+func Send(reply mail.Address, message string) (*string, error) {
+	log.Info("sendmail", sendmail)
 
-var writeCloser = func(client *smtp.Client, from string) io.WriteCloser {
-	auth := smtp.PlainAuth("", SENDER_USER, SENDER_PASSWORD, SENDER_HOST)
-	// Auth
-	if err := client.Auth(auth); err != nil {
-		log.Fatal(err)
+	log.Info("reply", reply)
+	if len(sendmail.env.SmtpHost) == 0 {
+		sender := newSESSender(sendmail)
+		return sender.Send(reply, message)
+	} else {
+		sender := newSMTPSender(sendmail)
+		err := sender.Send(reply, message)
+		return nil, err
 	}
-	// To && From
-	if err := client.Mail(from); err != nil {
-		log.Fatal(err)
-	}
-	for _, recipient := range recipients {
-		if err := client.Rcpt(recipient.Address); err != nil {
-			log.Fatal(err)
-		}
-	}
-	// Data
-	w, err := client.Data()
-	if err != nil {
-		log.Fatal(err)
-	}
-	return w
+	return nil, nil
+
+	// if len(SMTP_HOST)>0 {
+	// 	msg := sendmail.NewMessage()
+
+	// 	msg.Add("Reply-To", reply.String())
+	// 	msg.SetBody(message)
+
+	// 	log.Info("send email")
+	// 	err = sendmail.Send(*message)
+	// }
 }
